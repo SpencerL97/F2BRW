@@ -1,0 +1,19 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "mcp__interactive-brokers__create_order_instruction|mcp__interactive-brokers__delete_order_instruction",
+        "hooks": [
+          { "type": "command", "command": ".claude/hooks/pre-tool-use.sh" }
+        ]
+      }
+    ]
+  },
+  "permissions": {
+    "allow": [
+      "Bash(sqlite3:*)",
+      "Bash(python:*)",
+      "Bash(pip:*)"
+    ]
+  }
+}

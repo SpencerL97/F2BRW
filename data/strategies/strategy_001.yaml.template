@@ -1,0 +1,83 @@
+# Strategy template. Copy and rename to strategy_001.yaml, fill in completely.
+# A trade does NOT clear the pre-trade-checklist unless it matches an approved strategy.
+
+name: "Example: 20-day breakout (US large cap)"
+status: paper_only                         # paper_only | active | retired
+created: 2026-05-27
+last_reviewed: 2026-05-27
+
+edge:
+  one_sentence: "Liquid US large caps that close above their 20-day high tend to continue for 3-10 days as momentum traders pile in."
+  why_it_persists: "Behavioral chase + index passive flows reinforce trend in the medium term. Not arbed away below institutional capacity."
+  decay_conditions:
+    - "Persistent regime where breakouts fail >65% of the time (range-bound market)"
+    - "VIX > 30 for 5+ consecutive days"
+
+universe:
+  market: US_EQUITIES
+  min_avg_daily_dollar_volume: 50_000_000
+  min_price: 10
+  max_price: 1000
+  sectors_excluded: ["biotech_smallcap"]
+  symbols: ["custom_list"]                 # or "SP500" / "NASDAQ100"
+
+entry:
+  long_signal: "close > max(high, 20) AND close > close_prev"
+  short_signal: null
+  timeframe: "1Day"
+  time_window_et: "09:45 to 15:30"          # avoid open & close volatility
+
+exit:
+  stop_loss:
+    type: "ATR"
+    multiplier: 2.0
+    atr_period: 14
+  initial_target:
+    type: "R_multiple"
+    value: 3.0
+  time_stop_days: 10
+  trail_after_R: 1.5
+  trail_method: "chandelier_3atr"
+
+sizing:
+  per_trade_risk_pct: 1.0
+  max_position_pct_of_equity: 10.0
+  use_kelly_fraction: 0.25
+
+portfolio:
+  max_concurrent_positions: 5
+  max_sector_exposure_pct: 25.0
+  max_correlated_pairs: 2
+
+costs_assumed:
+  commission_per_share: 0.0
+  slippage_bps: 5
+  borrow_cost_apr: 0.0                      # long only here
+
+backtest:
+  data_range: "2010-01-01 to 2024-12-31"
+  in_sample_pct: 65
+  out_of_sample_pct: 35
+  walk_forward: true
+  metrics:
+    cagr: null
+    sharpe: null
+    sortino: null
+    max_drawdown_pct: null
+    avg_R: null
+    win_rate: null
+    profit_factor: null
+    trades_per_year: null
+  fill_metrics_before_paper_trading: true
+
+paper_graduation_criteria:
+  min_trades: 30
+  min_duration_days: 60
+  expectancy_within_pct_of_backtest: 30
+  max_drawdown_within_pct_of_backtest: 30
+  max_fill_slippage_vs_backtest_bps: 10
+
+retirement_conditions:
+  - "3 consecutive weeks below 5th percentile of Monte Carlo expectancy band"
+  - "Drawdown > 1.5x backtested max drawdown"
+  - "Documented regime shift in 'decay_conditions' present for 30+ days"

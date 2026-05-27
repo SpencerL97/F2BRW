@@ -1,0 +1,14 @@
+{
+  "mcpServers": {
+    "interactive-brokers": { "type": "http", "url": "https://api.ibkr.com/v1/api/mcp" },
+    "fmp":        { "type": "http", "url": "https://financialmodelingprep.com/mcp" },
+    "bigdata":    { "type": "http", "url": "https://mcp.bigdata.com" },
+    "wolfram":    { "type": "http", "url": "https://agenttools.wolfram.com/mcp" },
+    "crypto-com": { "type": "http", "url": "https://mcp.crypto.com/market-data/mcp" },
+    "coindesk":   { "type": "http", "url": "https://mcp.coindesk.com/mcp" },
+    "lunarcrush": { "type": "http", "url": "https://lunarcrush.ai/mcp" },
+    "indeed":     { "type": "http", "url": "https://mcp.indeed.com/claude/mcp" },
+    "gcal":       { "type": "http", "url": "https://calendarmcp.googleapis.com/mcp/v1" },
+    "gdrive":     { "type": "http", "url": "https://drivemcp.googleapis.com/mcp/v1" }
+  }
+}

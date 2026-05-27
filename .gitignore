@@ -1,0 +1,14 @@
+.env
+.venv/
+__pycache__/
+*.pyc
+data/journal.db
+data/journal.db-journal
+data/backtests/*.json
+data/statements/*
+!data/statements/.gitkeep
+# deep-dive scanner scratch files (regenerated each run)
+data/scan/
+.DS_Store
+.claude/local/
+*.log
