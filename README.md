@@ -10,17 +10,21 @@ This is not a stock picker. It is a Panel of four specialists that can veto any 
 
 ## Quickstart
 
+> New here? `docs/SETUP.md` is the full, step-by-step first-run walkthrough (including the
+> Claude Code trust/approval prompts). This section is the condensed version.
+
 ### 1. Prereqs
 
 - Python 3.11+
 - Node 18+ (Claude Code CLI: `npm install -g @anthropic-ai/claude-code`)
 - An IBKR account with API access enabled (paper account is fine)
-- The IBKR MCP added to your Claude.ai connectors
+- The remote MCP servers are declared in `.mcp.json`; you authenticate them in step 3.
 
 ### 2. Install
 
 ```bash
-cd ~/trading-sidekick
+git clone https://github.com/SpencerL97/F2BRW.git
+cd F2BRW                       # the repo root IS the project — run claude from here
 python -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
 
@@ -31,14 +35,23 @@ python scripts/init_db.py
 chmod +x .claude/hooks/*.sh
 ```
 
-### 3. Authenticate MCPs
+### 3. Launch + authenticate MCPs
 
 ```bash
-claude
-# In session:
-/mcp     # Open the panel; authenticate each remote server via browser OAuth
-         # interactive-brokers, fmp, bigdata, wolfram, crypto-com, coindesk,
-         # lunarcrush, indeed, gcal, gdrive
+claude        # run this FROM the repo root so CLAUDE.md, .claude/, and .mcp.json load
+```
+
+On first launch in this folder, Claude Code will ask you to:
+- **trust the folder** and its `.claude/settings.json` (which registers the live-order safety hook);
+- **enable the project MCP servers** from `.mcp.json`. Approve them.
+
+Then, in the session:
+
+```
+/mcp        # authenticate each remote server via browser OAuth:
+            # interactive-brokers, fmp, bigdata, wolfram, crypto-com, coindesk,
+            # lunarcrush, indeed, gcal, gdrive
+/agents     # confirm all 15 specialists loaded
 ```
 
 If you have an Unusual Whales subscription, add your API key to `.env` and uncomment the `unusual-whales` block in `.mcp.json` (a stub server is in `mcp_servers/unusual_whales_mcp/`).
@@ -57,11 +70,7 @@ cp data/strategies/strategy_001.yaml.template data/strategies/strategy_001.yaml
 
 ### 6. First session
 
-```bash
-claude
-```
-
-Try in order:
+Still in the `claude` session from step 3 (or relaunch `claude` from the repo root), try in order:
 1. *"Run daily-debrief."* — pulls IBKR state, calendar, regime, behavioral pulse
 2. *"Deep dive on the market."* — fans out 4 scanners in parallel, aggregates with proper statistical weighting
 3. *"I'm considering long NVDA at 145 stop 140 target 158 via strategy_001."* — invokes regime / cross-asset / multi-timeframe analysts THEN the four-specialist Panel. You'll get a Pre-Trade Card.
