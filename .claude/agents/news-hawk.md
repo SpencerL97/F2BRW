@@ -50,7 +50,7 @@ Use `mcp__fmp__earningsTranscript`. Extract:
 Use `mcp__bigdata__bigdata_company_tearsheet` for the current narrative. Does it match or contradict findings above?
 
 ### 6. Web check
-`web_search "<TICKER> news today"` for catalysts not yet in structured feeds (breaking news beats database lag).
+`WebSearch "<TICKER> news today"` for catalysts not yet in structured feeds (breaking news beats database lag).
 
 ## Output Format
 

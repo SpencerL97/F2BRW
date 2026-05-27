@@ -128,11 +128,11 @@ Still in the `claude` session from step 3 (or relaunch `claude` from the repo ro
 
 ## Hooks (deterministic safety)
 
-`.claude/hooks/pre-tool-use.sh` blocks IBKR `create_order_instruction` and `delete_order_instruction` calls unless:
+`.claude/hooks/pre-tool-use.sh` is a PreToolUse hook that blocks IBKR `create_order_instruction` and `delete_order_instruction` calls unless:
 - `TRADING_MODE=paper` in `.env`, OR
-- The user's prompt contains `EXECUTE LIVE: <TICKER> <BUY|SELL> <QTY>`
+- your **most recent message** contains `EXECUTE LIVE: <TICKER> <BUY|SELL> <QTY>`
 
-This is the second gate. IBKR's own confirmation in the interface is the third.
+It reads the hook payload from stdin (the way Claude Code delivers it), checks your latest turn in the conversation transcript for the phrase, and **fails closed** — any error in live mode blocks the order. This is the second gate. IBKR's own confirmation in the interface is the third.
 
 ---
 

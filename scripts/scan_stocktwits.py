@@ -1,6 +1,10 @@
 #!/usr/bin/env python3
 """Scan Stocktwits for ticker activity. Public API, no auth, rate-limited.
 
+Known limitation: Stocktwits has tightened access to this public endpoint and it now
+frequently returns 403/429 for unauthenticated requests. Failures degrade gracefully
+(an {"error": ...} dict), so treat an empty/error result as "no data", not "no activity".
+
 Usage:
     python scripts/scan_stocktwits.py AAPL
     python scripts/scan_stocktwits.py AAPL --json
@@ -67,8 +71,11 @@ def scan(ticker: str) -> dict[str, Any]:
             posts_24h += 1
             sent_24h[bucket] += 1
 
+    # Compare the last 24h against the PRIOR 6 days, not the full 7d window (which
+    # includes today's posts and would dampen the velocity reading).
     posts_per_hour_24h = posts_24h / 24
-    posts_per_hour_baseline = posts_7d_total / (7 * 24) if posts_7d_total else 0
+    posts_prior = max(posts_7d_total - posts_24h, 0)
+    posts_per_hour_baseline = posts_prior / (6 * 24) if posts_prior else 0
     velocity = (
         posts_per_hour_24h / posts_per_hour_baseline
         if posts_per_hour_baseline > 0
@@ -83,11 +90,11 @@ def scan(ticker: str) -> dict[str, Any]:
         "ticker": ticker,
         "posts_24h": posts_24h,
         "posts_7d_total": posts_7d_total,
-        "velocity_ratio": round(velocity, 2) if velocity else None,
+        "velocity_ratio": round(velocity, 2) if velocity is not None else None,
         "velocity_flag": (
-            "ACCELERATING" if velocity and velocity > 3 else
-            "elevated" if velocity and velocity > 1.5 else
-            "cold" if velocity and velocity < 0.5 else
+            "ACCELERATING" if velocity is not None and velocity > 3 else
+            "elevated" if velocity is not None and velocity > 1.5 else
+            "cold" if velocity is not None and velocity < 0.5 else
             "normal"
         ),
         "sentiment_24h": sent_24h,

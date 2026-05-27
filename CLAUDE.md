@@ -40,7 +40,7 @@ If any one of the four vetoes, the trade does NOT happen. Surface the disagreeme
 - **market-regime-analyst** — trend/vol/breadth/rate regime; tells the Panel which strategies are even supposed to work today
 - **strategy-researcher** — proposes new strategy candidates via the Phase 2 edge-hypothesis process
 
-### Real-Time Analytical Specialists — NO VOTE (new with IBKR)
+### Real-Time Analytical Specialists — NO VOTE
 
 These exist because IBKR unlocks real-time options chains, intraday bars, FX/futures, and global markets. They produce institutional-grade analytical context:
 
@@ -48,7 +48,7 @@ These exist because IBKR unlocks real-time options chains, intraday bars, FX/fut
 - **microstructure-analyst** — bid/ask spread analytics, tape reading, large-print proxy, intraday volume profile, time-of-day liquidity patterns
 - **multi-timeframe-analyst** — convergence/divergence detection across 5m / 1h / 1d / 1w; signals aligned across timeframes rank higher
 - **portfolio-risk-decomposer** — current book's beta to SPY, sector concentration, factor tilts (value/growth/momentum/quality), correlation matrix between holdings
-- **cross-asset-analyst** — confirms or contradicts equity signals via VIX, DXY, TLT, GLD, sector ETFs
+- **cross-asset-analyst** — confirms or contradicts equity signals via VIX, the dollar (DXY), Treasuries (TLT), credit (HYG), gold/oil (GLD/USO), and sector ETFs
 
 ### Signal Scanners — RESEARCH ONLY (invoked by `deep-dive`)
 
@@ -115,7 +115,7 @@ These exist because IBKR unlocks real-time options chains, intraday bars, FX/fut
 | Crypto data + news + social | `mcp__crypto-com__*`, `mcp__coindesk__*`, `mcp__lunarcrush__*` |
 | Calendar + Drive | `mcp__gcal__*`, `mcp__gdrive__*` |
 | Alt-data (hiring velocity) | `mcp__indeed__*` |
-| Unusual Whales (when subscribed) | `mcp__unusual_whales__*` |
+| Unusual Whales (when subscribed) | `mcp__unusual-whales__*` |
 | Web search / fetch | `WebSearch`, `WebFetch` |
 
 If a tool is missing, say so. Do not substitute and pretend.

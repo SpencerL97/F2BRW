@@ -32,7 +32,7 @@ For a given ticker, run all available sources in parallel via the underlying too
 - Sentiment ratio vs 7-day baseline
 
 ### 3. X / Twitter (via web search, not API)
-`web_search "$<TICKER> site:x.com"` and `web_search "$<TICKER> options unusual"` for last 24h indexed content.
+`WebSearch "$<TICKER> site:x.com"` and `WebSearch "$<TICKER> options unusual"` for last 24h indexed content.
 Caveat: web search misses most of X. State this every time.
 
 ### 4. LunarCrush (crypto only)

@@ -46,40 +46,31 @@ Required fields (REFUSE TO PROCEED if any missing):
 - symbol, side, qty, entry, stop, strategy, thesis (one sentence)
 - emotion_pre: 1–5 + one word (e.g., "3 calm", "5 fomo")
 
-Insert via:
+Insert via the parameterized helper (handles apostrophes in the thesis safely — never
+hand-build SQL with the free text):
 ```bash
-sqlite3 data/journal.db "
-  INSERT INTO trades(entry_time, symbol, side, qty, entry, stop, target, outcome, strategy, thesis, emotion_pre)
-  VALUES (datetime('now'), '<sym>', '<side>', <qty>, <entry>, <stop>, <target>, 'open', '<strategy>', '<thesis>', '<emo>');
-"
+python scripts/journal.py open \
+  --symbol <SYM> --side <long|short> --qty <qty> \
+  --entry <entry> --stop <stop> --target <target> \
+  --strategy <strategy> --thesis "<one sentence>" --emotion-pre "<emo>"
 ```
 
-Confirm with: "Journal entry #<id> written."
+It prints "Journal entry #<id> written." — surface that id to the trader.
 
 ## On Exit
 
 Required fields:
-- exit_price, exit_time (auto), outcome ('win'|'loss'|'breakeven'), emotion_post, rule_violations (or 'none')
+- exit price, outcome ('win'|'loss'|'breakeven'), emotion_post, rule_violations (or 'none')
 - notes: one sentence on what worked or didn't
 
-Compute:
-- `pnl = (exit_price - entry) * qty` for long, inverted for short
-- `r_multiple = (exit_price - entry) / abs(entry - stop)` for long, inverted for short
+`pnl` and `r_multiple` are computed by the helper from the stored side/entry/stop/qty
+(long: `(exit-entry)*qty`; short inverted; `r = (exit-entry)/abs(entry-stop)` long, inverted
+short). Do NOT compute them by hand.
 
-Update via:
 ```bash
-sqlite3 data/journal.db "
-  UPDATE trades
-  SET exit_time = datetime('now'),
-      exit_price = <exit>,
-      outcome = '<out>',
-      pnl = <pnl>,
-      r_multiple = <r>,
-      emotion_post = '<emo>',
-      rule_violations = '<v>',
-      notes = '<notes>'
-  WHERE id = <id>;
-"
+python scripts/journal.py close \
+  --id <id> --exit <exit> --outcome <win|loss|breakeven> \
+  --emotion-post "<emo>" --rule-violations "<tags or none>" --notes "<one sentence>"
 ```
 
 ## Rule Violations — Predefined Tags

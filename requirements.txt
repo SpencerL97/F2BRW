@@ -1,10 +1,12 @@
+# Core — required to run the scripts and the MCP stub. Keep this list lean so
+# `pip install -r requirements.txt` is reliable.
 mcp>=1.2.0
 python-dotenv>=1.0.0
 pandas>=2.1.0
 numpy>=1.26.0
 yfinance>=0.2.40
-vectorbt>=0.26.0
-scipy>=1.11.0
-rich>=13.7.0
-plotext>=5.2.8
 pyyaml>=6.0.1
+
+# Optional — only needed if you build out local backtesting / richer CLI output.
+# Install with:  pip install -r requirements-optional.txt
+# (kept separate because vectorbt pins older numpy/pandas and can break the core install)

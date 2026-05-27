@@ -40,6 +40,8 @@ from inside `F2BRW/`.
 ```bash
 python -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
+# Optional (local backtesting / richer output; can pull older numpy/pandas):
+# pip install -r requirements-optional.txt
 ```
 
 ## 4. Initialize the journal and config
@@ -152,14 +154,21 @@ Don't flip to live until a strategy meets the graduation criteria in its YAML (â
 These don't need any server auth and are a quick sanity check after install:
 
 ```bash
+python scripts/init_db.py                              # create the journal db
 python scripts/aggregate_signals.py --bootstrap        # prints the scoring framework
 python scripts/unusual_volume.py AAPL                  # needs network + yfinance
 
-# the order-gating hook (should ALLOW in paper, BLOCK in live without the phrase):
-CLAUDE_TOOL_NAME=mcp__interactive-brokers__create_order_instruction \
-  CLAUDE_USER_PROMPT="buy NVDA" TRADING_MODE=paper bash .claude/hooks/pre-tool-use.sh; echo "exit=$?"
-CLAUDE_TOOL_NAME=mcp__interactive-brokers__create_order_instruction \
-  CLAUDE_USER_PROMPT="buy NVDA" TRADING_MODE=live  bash .claude/hooks/pre-tool-use.sh; echo "exit=$?"
+# journal helper (apostrophe-safe; computes pnl + R for you):
+python scripts/journal.py open --symbol NVDA --side long --qty 100 \
+  --entry 145 --stop 140 --target 158 --strategy strategy_001 \
+  --thesis "couldn't ignore the 20d breakout" --emotion-pre "3 calm"
+
+# the order-gating hook reads its payload from STDIN as JSON (like Claude Code does).
+# Should ALLOW in paper (exit 0) and BLOCK in live without the phrase (exit 2):
+echo '{"tool_name":"mcp__interactive-brokers__create_order_instruction"}' \
+  | TRADING_MODE=paper bash .claude/hooks/pre-tool-use.sh; echo "exit=$? (expect 0)"
+echo '{"tool_name":"mcp__interactive-brokers__create_order_instruction"}' \
+  | TRADING_MODE=live  bash .claude/hooks/pre-tool-use.sh; echo "exit=$? (expect 2)"
 ```
 
 ## Troubleshooting

@@ -56,13 +56,10 @@ LESSON CATEGORY: <one of below>
 
 ## Step 5 — Write the post-mortem note to the journal
 
-Update the `notes` column:
+Append to the `notes` column via the parameterized helper (safe with apostrophes):
 ```bash
-sqlite3 data/journal.db "
-  UPDATE trades
-  SET notes = notes || ' | POST-MORTEM: <category>. Lesson: <one sentence>. Action: <specific change to make>.'
-  WHERE id = <trade_id>;
-"
+python scripts/journal.py note --id <trade_id> \
+  --text "POST-MORTEM: <category>. Lesson: <one sentence>. Action: <specific change to make>."
 ```
 
 ## Step 6 — If category is RULE_VIOLATION or PSYCHOLOGICAL

@@ -82,8 +82,16 @@ UNANIMOUS APPROVE? <YES | NO>
 
 ## Step 6 — Decision
 
-- **All four APPROVE / PASS / GREEN** → Write the proposed trade to `data/journal.db` as a pending entry, then say:
-  > "Pre-trade card written to journal. To submit the paper order, reply with: CONFIRM PAPER ORDER"
+- **All four APPROVE / PASS / GREEN** → Write the proposed trade to `data/journal.db` as a pending entry via the parameterized helper (carries the four verdicts; safe with apostrophes in the thesis):
+  ```bash
+  python scripts/journal.py pending \
+    --symbol <SYM> --side <long|short> --qty <N> \
+    --entry <E> --stop <S> --target <T> --strategy <name> --thesis "<one sentence>" \
+    --quant-verdict "PASS" --risk-verdict "APPROVE" \
+    --behavior-verdict "GREEN" --skeptical-verdict "APPROVE"
+  ```
+  Then say:
+  > "Pre-trade card #<id> written to journal. To submit the paper order, reply with: CONFIRM PAPER ORDER"
   > Wait. Do not call `mcp__interactive-brokers__create_order_instruction` until the user replies with that exact phrase. (In paper mode the PreToolUse hook allows it; in live mode it also requires the `EXECUTE LIVE: ...` phrase per Hard Rule #1, and IBKR still confirms in its own interface.)
 
 - **Any specialist vetoes** → Do NOT write to the journal. Surface every dissent verbatim. End with:

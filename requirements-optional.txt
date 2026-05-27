@@ -1,0 +1,11 @@
+# Optional dependencies — NOT needed for the core sidekick.
+# Install only if/when you build local backtesting or richer terminal output:
+#   pip install -r requirements-optional.txt
+#
+# Note: vectorbt pins older numpy/pandas ranges and may conflict with the core
+# requirements. If pip resolves into a conflict, install it in a separate venv.
+
+vectorbt>=0.26.0    # vectorized backtesting engine (for strategy backtests)
+scipy>=1.11.0       # stats helpers (distributions, Monte Carlo)
+rich>=13.7.0        # nicer terminal tables/markdown
+plotext>=5.2.8      # terminal charts

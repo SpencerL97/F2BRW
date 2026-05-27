@@ -94,4 +94,13 @@ ATTENTION TODAY
 ================================================
 ```
 
+## Step 7 — Record the debrief
+
+Write today's debrief row so `behavioral-coach` can confirm the trader actually ran it
+(it checks `debriefs` for today's date):
+```bash
+python scripts/journal.py debrief --equity <equity> --day-pnl <day_pnl> \
+  --notes "<one-line summary of regime + attention items>"
+```
+
 End with: "What would you like to look at first?" — NOT a trade suggestion.

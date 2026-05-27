@@ -48,14 +48,14 @@ Use `mcp__fmp__form13F` to check recent 13F filings. Surface:
 - Note: 13Fs are 45+ days lagged. State this caveat with every finding.
 
 ### 4. Dark pool / lit volume ratio
-If Unusual Whales MCP is connected (`mcp__unusual_whales__*`), pull dark pool prints. Otherwise, state: "Dark pool data requires Unusual Whales subscription — currently unavailable."
+If Unusual Whales MCP is connected (`mcp__unusual-whales__*`), pull dark pool prints. Otherwise, state: "Dark pool data requires Unusual Whales subscription — currently unavailable."
 
 ### 5. Options flow (if available)
 If UW MCP connected, pull:
 - Top sweeps last 24h
 - Put/call ratio vs 30-day average
 - Largest single trades by premium
-Otherwise: `web_search "unusual options activity <TICKER> today"` and surface what's findable from public reports.
+Otherwise: `WebSearch "unusual options activity <TICKER> today"` and surface what's findable from public reports.
 
 ## Output Format
 

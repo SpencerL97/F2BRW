@@ -124,11 +124,11 @@ def scan(ticker: str, hours: int = 24) -> dict[str, Any]:
         "mentions_baseline_7d": len(hits_baseline),
         "posts_per_hour_recent": round(posts_per_hour_recent, 3),
         "posts_per_hour_baseline": round(posts_per_hour_baseline, 3),
-        "velocity_ratio": round(velocity, 2) if velocity else None,
+        "velocity_ratio": round(velocity, 2) if velocity is not None else None,
         "velocity_flag": (
-            "ACCELERATING" if velocity and velocity > 3 else
-            "elevated" if velocity and velocity > 1.5 else
-            "cold" if velocity and velocity < 0.5 else
+            "ACCELERATING" if velocity is not None and velocity > 3 else
+            "elevated" if velocity is not None and velocity > 1.5 else
+            "cold" if velocity is not None and velocity < 0.5 else
             "normal"
         ),
         "sentiment_counts": sentiments,

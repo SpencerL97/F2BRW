@@ -2,31 +2,37 @@
 """Aggregate scanner outputs into a ranked signal report.
 
 Inputs: JSON files from flow-analyst, insider-watcher, social-scout, news-hawk.
+Each file is a JSON object whose top-level keys are uppercase tickers.
 Output: ranked tickers with composite scores and full evidence chain.
 
 Analytics applied:
 1. Source weighting (per-signal-type weights)
-2. Recency decay (half-life: 5d news/social, 30d insider/13F)
-3. Cross-source corroboration (3+ scanners = 1.5x multiplier)
-4. Strategy fit (active strategy match + regime support = +0.3; mismatch = -0.5)
+2. Recency decay (half-life: 5d news, 3d social, 30d insider, 45d 13F, 2d flow)
+3. Cross-source corroboration (3+ distinct scanners contributing = 1.5x multiplier)
+4. Strategy fit: matches an active strategy AND regime supports it = +0.3;
+   matches an active strategy but regime does NOT support it = -0.5;
+   matches no active strategy = neutral (0)
 5. Earnings-window penalty (within 5 trading days = x0.7)
 
 Usage:
     python scripts/aggregate_signals.py \\
-        --flow flow.json \\
-        --insider insider.json \\
-        --social social.json \\
-        --news news.json \\
-        --strategies-dir data/strategies/ \\
-        [--regime supported|unsupported|neutral]
+        --flow data/scan/flow.json \\
+        --insider data/scan/insider.json \\
+        --social data/scan/social.json \\
+        --news data/scan/news.json \\
+        --strategy-match "AAPL,NVDA" \\
+        --regime-supported "NVDA" \\
+        --earnings-windows "AAPL:3,NVDA:1" \\
+        --threshold 5.0
+
+    python scripts/aggregate_signals.py --bootstrap   # print framework + exit
 """
 from __future__ import annotations
 
 import argparse
 import json
-import math
 import sys
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 from pathlib import Path
 
 # -------- Configuration --------
@@ -69,11 +75,22 @@ def _decay(days_old: float, half_life: float) -> float:
     return 0.5 ** (days_old / half_life)
 
 
+def _num(value, default: float = 0.0) -> float:
+    """Coerce a possibly-missing/None/string value to float; never raises."""
+    if value is None:
+        return default
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return default
+
+
 def _load_json(path: Path | None) -> dict:
     if not path or not path.exists():
         return {}
     try:
-        return json.loads(path.read_text())
+        data = json.loads(path.read_text())
+        return data if isinstance(data, dict) else {}
     except Exception as e:
         sys.stderr.write(f"[aggregate] failed to load {path}: {e}\n")
         return {}
@@ -99,18 +116,21 @@ def score_ticker(
     regime_supported: bool | None,
     earnings_in_days: int | None,
 ) -> dict:
-    """Compute composite score with evidence."""
+    """Compute composite score with evidence.
+
+    `scanners_with_signal` is the number of DISTINCT sources (flow/insider/social/news)
+    that actually contributed weight — that is what the corroboration multiplier keys on.
+    """
     f = flow.get(ticker, {})
     i = insider.get(ticker, {})
     s = social.get(ticker, {})
     n = news.get(ticker, {})
 
     contributions: list[dict] = []
-    scanners_with_signal = 0
 
     # FLOW
-    z = f.get("z_score", 0)
-    if z and z >= 3:
+    z = _num(f.get("z_score"))
+    if z >= 3:
         w = WEIGHTS["volume_z_3plus"] * _decay(0, HALF_LIFE_DAYS["flow"])
         contributions.append({"source": "flow", "type": "volume_z_3plus", "weight": w,
                               "evidence": f"volume z={z}, regime={f.get('regime')}"})
@@ -118,77 +138,63 @@ def score_ticker(
         w = WEIGHTS["options_unusual"] * _decay(0, HALF_LIFE_DAYS["flow"])
         contributions.append({"source": "flow", "type": "options_unusual", "weight": w,
                               "evidence": str(f.get("options_unusual"))[:200]})
-    if contributions and contributions[-1]["source"] == "flow":
-        scanners_with_signal += 1
-    elif f and z and z >= 2:
-        # Notable but below the heavy-weight threshold
-        scanners_with_signal += 1
 
     # INSIDER
-    if i.get("cluster_buy_count", 0) >= 3:
-        w = WEIGHTS["insider_cluster_buy"] * _decay(i.get("cluster_buy_age_days", 0),
-                                                   HALF_LIFE_DAYS["insider"])
+    if _num(i.get("cluster_buy_count")) >= 3:
+        w = WEIGHTS["insider_cluster_buy"] * _decay(_num(i.get("cluster_buy_age_days")),
+                                                    HALF_LIFE_DAYS["insider"])
         contributions.append({"source": "insider", "type": "insider_cluster_buy", "weight": w,
-                              "evidence": f"{i['cluster_buy_count']} insiders bought, "
-                                         f"total ${i.get('cluster_buy_total', 0):,.0f}"})
-        scanners_with_signal += 1
+                              "evidence": f"{int(_num(i.get('cluster_buy_count')))} insiders bought, "
+                                         f"total ${_num(i.get('cluster_buy_total')):,.0f}"})
     elif i.get("ceo_or_cfo_buy"):
-        w = WEIGHTS["insider_single_buy"] * _decay(i.get("ceo_or_cfo_age_days", 0),
-                                                  HALF_LIFE_DAYS["insider"])
+        w = WEIGHTS["insider_single_buy"] * _decay(_num(i.get("ceo_or_cfo_age_days")),
+                                                   HALF_LIFE_DAYS["insider"])
         contributions.append({"source": "insider", "type": "insider_single_buy", "weight": w,
                               "evidence": i.get("ceo_or_cfo_evidence", "CEO/CFO buy")})
-        scanners_with_signal += 1
     if i.get("filing_13d_recent"):
-        w = WEIGHTS["filing_13d"] * _decay(i.get("filing_13d_age_days", 0),
-                                          HALF_LIFE_DAYS["insider"])
+        w = WEIGHTS["filing_13d"] * _decay(_num(i.get("filing_13d_age_days")),
+                                           HALF_LIFE_DAYS["insider"])
         contributions.append({"source": "insider", "type": "filing_13d", "weight": w,
                               "evidence": i.get("filing_13d_evidence", "13D filed")})
-        if not any(c["source"] == "insider" for c in contributions[:-1]):
-            scanners_with_signal += 1
-    if i.get("congress_trades_60d", 0) >= 1:
-        w = WEIGHTS["congress_trade"] * _decay(i.get("congress_avg_age_days", 30),
-                                              HALF_LIFE_DAYS["insider"])
+    if _num(i.get("congress_trades_60d")) >= 1:
+        w = WEIGHTS["congress_trade"] * _decay(_num(i.get("congress_avg_age_days"), 30),
+                                               HALF_LIFE_DAYS["insider"])
         contributions.append({"source": "insider", "type": "congress_trade", "weight": w,
-                              "evidence": f"{i['congress_trades_60d']} congressional trades disclosed"})
+                              "evidence": f"{int(_num(i.get('congress_trades_60d')))} congressional trades disclosed"})
 
     # SOCIAL
-    velocity = s.get("velocity_ratio")
-    if velocity and velocity >= 5:
+    velocity = _num(s.get("velocity_ratio"))
+    if velocity >= 5:
         w = WEIGHTS["social_velocity_5x"] * _decay(0, HALF_LIFE_DAYS["social"])
         contributions.append({"source": "social", "type": "social_velocity_5x", "weight": w,
                               "evidence": f"Reddit/ST velocity {velocity:.1f}x baseline"})
-        scanners_with_signal += 1
     if s.get("sentiment_dispersion_high"):
         w = WEIGHTS["sentiment_dispersion"] * _decay(0, HALF_LIFE_DAYS["social"])
         contributions.append({"source": "social", "type": "sentiment_dispersion", "weight": w,
                               "evidence": "high sentiment variance (controversy)"})
-        if not any(c["source"] == "social" for c in contributions[:-1]):
-            scanners_with_signal += 1
 
     # NEWS
-    material_count = n.get("material_news_count", 0)
+    material_count = _num(n.get("material_news_count"))
     if material_count >= 1:
-        w = WEIGHTS["news_material"] * _decay(n.get("most_recent_news_age_days", 0),
-                                             HALF_LIFE_DAYS["news"])
+        w = WEIGHTS["news_material"] * _decay(_num(n.get("most_recent_news_age_days")),
+                                              HALF_LIFE_DAYS["news"])
         contributions.append({"source": "news", "type": "news_material", "weight": w,
-                              "evidence": f"{material_count} material news items; latest: "
-                                         f"{n.get('latest_headline', '')[:100]}"})
-        scanners_with_signal += 1
+                              "evidence": f"{int(material_count)} material news items; latest: "
+                                         f"{str(n.get('latest_headline', ''))[:100]}"})
     if n.get("analyst_cluster_upgrade"):
-        w = WEIGHTS["analyst_cluster_up"] * _decay(n.get("analyst_avg_age_days", 7),
-                                                  HALF_LIFE_DAYS["news"])
+        w = WEIGHTS["analyst_cluster_up"] * _decay(_num(n.get("analyst_avg_age_days"), 7),
+                                                   HALF_LIFE_DAYS["news"])
         contributions.append({"source": "news", "type": "analyst_cluster_up", "weight": w,
-                              "evidence": f"{n.get('analyst_upgrades_30d', 0)} upgrades in 30d"})
+                              "evidence": f"{int(_num(n.get('analyst_upgrades_30d')))} upgrades in 30d"})
 
     # Sum raw score
     raw_score = sum(c["weight"] for c in contributions)
 
-    # Cross-source corroboration
-    if scanners_with_signal >= CORROBORATION_THRESHOLD:
+    # Cross-source corroboration: count DISTINCT sources that contributed weight.
+    scanners_with_signal = len({c["source"] for c in contributions})
+    corroboration_applied = scanners_with_signal >= CORROBORATION_THRESHOLD
+    if corroboration_applied:
         raw_score *= CORROBORATION_MULTIPLIER
-        corroboration_applied = True
-    else:
-        corroboration_applied = False
 
     # Strategy fit
     if strategy_match and regime_supported:
@@ -202,8 +208,8 @@ def score_ticker(
         raw_score *= EARNINGS_PENALTY
         earnings_applied = True
 
-    # Normalize to 0-10 scale (cap at 10)
-    composite = min(round(raw_score * 2, 2), 10.0)
+    # Normalize to 0-10 scale (cap at 10, floor at 0)
+    composite = max(min(round(raw_score * 2, 2), 10.0), 0.0)
 
     return {
         "ticker": ticker,
@@ -219,15 +225,25 @@ def score_ticker(
     }
 
 
+def _parse_ticker_set(raw: str) -> set[str]:
+    return {t.strip().upper() for t in raw.split(",") if t.strip()}
+
+
 def main():
-    ap = argparse.ArgumentParser()
+    ap = argparse.ArgumentParser(description=__doc__,
+                                 formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--flow", type=Path)
     ap.add_argument("--insider", type=Path)
     ap.add_argument("--social", type=Path)
     ap.add_argument("--news", type=Path)
-    ap.add_argument("--strategies-dir", type=Path, default=Path("data/strategies"))
+    ap.add_argument("--strategy-match", type=str, default="",
+                    help="Comma-separated tickers that match an ACTIVE strategy's universe "
+                         "(regardless of regime). Tickers listed here but NOT in "
+                         "--regime-supported take the mismatch penalty. If omitted, the "
+                         "--regime-supported set is used (no mismatch penalty fires).")
     ap.add_argument("--regime-supported", type=str, default="",
-                    help="Comma-separated tickers that match active+supported strategies")
+                    help="Comma-separated tickers whose matching strategy the current regime "
+                         "supports (a subset of --strategy-match). These get the fit bonus.")
     ap.add_argument("--earnings-windows", type=str, default="",
                     help="Comma-separated ticker:days pairs (e.g., 'AAPL:3,NVDA:1')")
     ap.add_argument("--threshold", type=float, default=5.0,
@@ -253,13 +269,18 @@ def main():
 
     tickers = _ticker_universe(flow, insider, social, news)
 
-    supported_set = {t.strip().upper() for t in args.regime_supported.split(",") if t.strip()}
+    supported_set = _parse_ticker_set(args.regime_supported)
+    match_set = _parse_ticker_set(args.strategy_match)
+    # If no explicit strategy-match set was given, treat the supported set as the matched
+    # universe (legacy behaviour: bonus only, no mismatch penalty). Supported is always a
+    # subset of matched.
+    if not match_set:
+        match_set = set(supported_set)
+    match_set |= supported_set
 
     earnings_map: dict[str, int] = {}
     for pair in args.earnings_windows.split(","):
         pair = pair.strip()
-        if not pair:
-            continue
         if ":" in pair:
             t, d = pair.split(":", 1)
             try:
@@ -269,8 +290,13 @@ def main():
 
     results = []
     for t in tickers:
-        regime = True if t in supported_set else (False if supported_set else None)
-        strategy_match = t in supported_set
+        strategy_match = t in match_set
+        if t in supported_set:
+            regime = True
+        elif t in match_set:
+            regime = False
+        else:
+            regime = None
         results.append(score_ticker(
             t, flow, insider, social, news,
             strategy_match=strategy_match,

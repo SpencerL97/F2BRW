@@ -51,7 +51,7 @@ Use `mcp__fmp__secFilings`. Flag in last 7 days:
 - S-3 — secondary offering (dilutive, often bearish short-term)
 
 ### 5. Web check
-`web_search "<TICKER> insider buying"` and `web_search "<TICKER> congress trade"` for anything missed by the structured feeds.
+`WebSearch "<TICKER> insider buying"` and `WebSearch "<TICKER> congress trade"` for anything missed by the structured feeds.
 
 ## Output Format
 

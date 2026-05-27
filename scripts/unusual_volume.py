@@ -20,13 +20,11 @@ from __future__ import annotations
 import argparse
 import json
 import sys
-from datetime import datetime, timedelta
 
 
 def scan(ticker: str) -> dict:
     try:
         import yfinance as yf
-        import numpy as np
     except ImportError as e:
         return {"ticker": ticker, "error": f"missing dep: {e}"}
 

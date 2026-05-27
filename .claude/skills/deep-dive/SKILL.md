@@ -77,15 +77,21 @@ python scripts/aggregate_signals.py \
   --insider data/scan/insider.json \
   --social data/scan/social.json \
   --news data/scan/news.json \
-  --regime-supported "<comma-separated tickers matching an active+supported strategy>" \
+  --strategy-match "<tickers matching ANY active strategy's universe>" \
+  --regime-supported "<subset of those the current regime supports>" \
   --earnings-windows "<TICKER:days,...>" \
   --threshold 5.0
 ```
 
-`--regime-supported` is the set of tickers that both match an active strategy's universe AND are
-supported by today's regime (from `market-regime-analyst`); the scorer applies the +0.3 fit bonus
-to those and the −0.5 mismatch penalty to the rest of the scored universe. `--earnings-windows`
-carries trading-days-to-earnings per ticker (from `news-hawk`) so the ×0.7 earnings penalty fires.
+Strategy fit needs BOTH sets, and `--regime-supported` must be a subset of `--strategy-match`:
+- `--strategy-match` — tickers that match an active strategy's universe (from the strategy YAMLs).
+- `--regime-supported` — the subset whose strategy today's regime backs (from `market-regime-analyst`).
+
+The scorer then applies **+0.3** to regime-supported tickers, **−0.5** to tickers that match a
+strategy but whose regime is unsupported, and **0** to tickers matching no active strategy. (If you
+pass only `--regime-supported`, the −0.5 penalty never fires — you get bonus-only behavior.)
+`--earnings-windows` carries trading-days-to-earnings per ticker (from `news-hawk`) so the ×0.7
+earnings penalty fires.
 
 The aggregator applies:
 
