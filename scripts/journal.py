@@ -66,11 +66,14 @@ def cmd_open(a) -> None:
 def cmd_close(a) -> None:
     con = _connect()
     row = con.execute(
-        "SELECT side, qty, entry, stop FROM trades WHERE id = ?", (a.id,)
+        "SELECT side, qty, entry, stop, outcome FROM trades WHERE id = ?", (a.id,)
     ).fetchone()
     if row is None:
         con.close()
         sys.exit(f"No trade with id {a.id}.")
+    if row["outcome"] != "open":
+        con.close()
+        sys.exit(f"Trade #{a.id} is already closed (outcome={row['outcome']}). Refusing to overwrite.")
 
     side = (row["side"] or "long").lower()
     qty, entry, stop = row["qty"], row["entry"], row["stop"]
@@ -116,8 +119,11 @@ def cmd_note(a) -> None:
         con.close()
         sys.exit(f"No trade with id {a.id}.")
     con.execute(
-        "UPDATE trades SET notes = TRIM(COALESCE(notes, '') || ' | ' || ?, ' |') WHERE id = ?",
-        (a.text, a.id),
+        "UPDATE trades SET notes = CASE "
+        "WHEN notes IS NULL OR notes = '' THEN ? "
+        "ELSE notes || ' | ' || ? END "
+        "WHERE id = ?",
+        (a.text, a.text, a.id),
     )
     con.commit()
     con.close()
